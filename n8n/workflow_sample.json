@@ -1,0 +1,138 @@
+{
+  "name": "AI Growth Engine - Student Registration & Follow-up Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "registration-flow",
+        "options": {}
+      },
+      "id": "node_webhook",
+      "name": "Webhook Receiver",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "userName",
+              "value": "={{ $json.body.user.name }}"
+            },
+            {
+              "name": "userEmail",
+              "value": "={{ $json.body.user.email }}"
+            },
+            {
+              "name": "segment",
+              "value": "={{ $json.body.user.segment }}"
+            },
+            {
+              "name": "project",
+              "value": "={{ $json.body.recommendation.recommended_project }}"
+            }
+          ]
+        }
+      },
+      "id": "node_segment",
+      "name": "Extract User Segment",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "prompt": "=Write a personalized welcome email for {{ $node[\"Extract User Segment\"].json.userName }} who was assigned the '{{ $node[\"Extract User Segment\"].json.project }}' project under segment '{{ $node[\"Extract User Segment\"].json.segment }}'. Keep it encouraging, 3 sentences max."
+      },
+      "id": "node_ai_message",
+      "name": "Generate Personal Message",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "amount": 24,
+        "unit": "hours"
+      },
+      "id": "node_wait",
+      "name": "Wait 24 Hours",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.NEXT_PUBLIC_APP_URL }}/api/webhooks/n8n",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "activity_check"
+            },
+            {
+              "name": "userEmail",
+              "value": "={{ $node[\"Extract User Segment\"].json.userEmail }}"
+            }
+          ]
+        }
+      },
+      "id": "node_activity_check",
+      "name": "Check User Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Receiver": {
+      "main": [
+        [
+          {
+            "node": "Extract User Segment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract User Segment": {
+      "main": [
+        [
+          {
+            "node": "Generate Personal Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Personal Message": {
+      "main": [
+        [
+          {
+            "node": "Wait 24 Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 24 Hours": {
+      "main": [
+        [
+          {
+            "node": "Check User Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
